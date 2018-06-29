@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.RegularExpressions;
 
 using YHCJB.Util;
 
@@ -158,19 +159,20 @@ namespace YHSBJ.ZJGL
         {
             if (args.Length < 2)
             {
-                "使用方法：缴费结束年月 测算表格路径".Println();
+                "使用方法：缴费结束年月 测算表格路径 [不处理的备注内容]".Println();
                 Environment.Exit(-1);
             }
 
             var jfjsny = Convert.ToInt32(args[0]);
             var workbook = ExcelExtension.LoadExcel(args[1]);
+            string nodeal = args.Length > 2 ? args[2] : null;
             var sheet = workbook.GetSheetAt(0);
 
             for (var irow = 4; irow <= sheet.LastRowNum; irow++)
             {
                 var memo = sheet.Cell(irow, 15).CellValue()?.Trim() ?? "";
-                //if (memo == "重复")
-                //    continue;
+                if (!string.IsNullOrEmpty(nodeal) && Regex.IsMatch(memo, nodeal))
+                    continue;
 
                 try
                 {
