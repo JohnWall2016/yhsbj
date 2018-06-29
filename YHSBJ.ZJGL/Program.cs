@@ -112,9 +112,6 @@ namespace YHSBJ.ZJGL
         
         static void Main1(string[] args)
         {
-            //GetSpansFromTo(200802, 201001).Select((ny, i) => $"{i+1}: {ny}").JoinToString("\n").Println();
-            //Environment.Exit(-1);
-            
             if (args.Length < 3)
             {
                 "使用方法：缴费结束年月 缴费月数 已缴费年月 [已缴费年月...]".Println();
@@ -159,9 +156,6 @@ namespace YHSBJ.ZJGL
 
         static void Main(string[] args)
         {
-            //$"{StepMonth(201812, 12)}".Println();
-            //Environment.Exit(-1);
-            
             if (args.Length < 2)
             {
                 "使用方法：缴费结束年月 测算表格路径".Println();
@@ -177,74 +171,81 @@ namespace YHSBJ.ZJGL
                 var memo = sheet.Cell(irow, 15).CellValue()?.Trim() ?? "";
                 //if (memo == "重复")
                 //    continue;
-                
-                var jfys = (int)sheet.Cell(irow, 8).NumericCellValue;
-                var ptys = (int)sheet.Cell(irow, 9).NumericCellValue;
-            
-                var minuend = GetSpansFromEnd(jfjsny, jfys);
 
-                var subtractor = new List<int>();
-                var wdcb = sheet.Cell(irow, 14).CellValue().Trim();
-                if (wdcb != null && wdcb != "")
+                try
                 {
-                    var wdcbs = wdcb.Split("|");
-                    for (var i = 0; i < wdcbs.Length; i++)
+                    var jfys = (int)sheet.Cell(irow, 8).NumericCellValue;
+                    var ptys = (int)sheet.Cell(irow, 9).NumericCellValue;
+            
+                    var minuend = GetSpansFromEnd(jfjsny, jfys);
+
+                    var subtractor = new List<int>();
+                    var wdcb = sheet.Cell(irow, 14).CellValue().Trim();
+                    if (wdcb != null && wdcb != "")
                     {
-                        var yjfny = wdcbs[i];
-                        var nys = yjfny.Split("-");
-                        if (nys.Length > 1)
+                        var wdcbs = wdcb.Split("|");
+                        for (var i = 0; i < wdcbs.Length; i++)
                         {
-                            var ksny = Convert.ToInt32(nys[0]);
-                            var jsny = Convert.ToInt32(nys[1]);
-                            subtractor.AddRange(GetSpansFromTo(ksny, jsny));
-                        }
-                        else
-                        {
-                            var ksny = Convert.ToInt32(nys[0]);
-                            subtractor.Add(ksny);
+                            var yjfny = wdcbs[i];
+                            var nys = yjfny.Split("-");
+                            if (nys.Length > 1)
+                            {
+                                var ksny = Convert.ToInt32(nys[0]);
+                                var jsny = Convert.ToInt32(nys[1]);
+                                subtractor.AddRange(GetSpansFromTo(ksny, jsny));
+                            }
+                            else
+                            {
+                                var ksny = Convert.ToInt32(nys[0]);
+                                subtractor.Add(ksny);
+                            }
                         }
                     }
-                }
+                
+                    SpansSubtract(minuend, subtractor);
 
-                SpansSubtract(minuend, subtractor);
+                    var spans = GetSpansList(minuend);
 
-                var spans = GetSpansList(minuend);
-
-                var total = 0;
-                var ptSpans = new List<string>();
-                var grSpans = new List<string>();
-                var inPtSpans = true;
-                for (var i = 0; i < spans.Count(); i++)
-                {
-                    var span = spans.ElementAt(i);
-                    var sspan = $"{span.begMonth}-{span.endMonth}[{span.count}]";
-                    total += span.count;
-                    if (inPtSpans && total >= ptys)
+                    var total = 0;
+                    var ptSpans = new List<string>();
+                    var grSpans = new List<string>();
+                    var inPtSpans = true;
+                    for (var i = 0; i < spans.Count(); i++)
                     {
-                        if (total == ptys)
+                        var span = spans.ElementAt(i);
+                        var sspan = $"{span.begMonth}-{span.endMonth}[{span.count}]";
+                        total += span.count;
+                        if (inPtSpans && total >= ptys)
+                        {
+                            if (total == ptys)
+                                ptSpans.Add(sspan);
+                            else
+                            {
+                                int delta = total - ptys;
+                                ptSpans.Add($"{span.begMonth}-{StepMonth(span.endMonth, -delta)}[{span.count-delta}]");
+                                grSpans.Add($"{StepMonth(span.endMonth, -delta+1)}-{span.endMonth}[{delta}]");
+                            }
+                            inPtSpans = false;
+                            continue;
+                        }
+                    
+                        if (inPtSpans)
                             ptSpans.Add(sspan);
                         else
-                        {
-                            int delta = total - ptys;
-                            ptSpans.Add($"{span.begMonth}-{StepMonth(span.endMonth, -delta)}[{span.count-delta}]");
-                            grSpans.Add($"{StepMonth(span.endMonth, -delta+1)}-{span.endMonth}[{delta}]");
-                        }
-                        inPtSpans = false;
-                        continue;
+                            grSpans.Add(sspan);
                     }
-                    
-                    if (inPtSpans)
-                        ptSpans.Add(sspan);
+                    var sptSpans = ptSpans.JoinToString("|");
+                    if (total < ptys)
+                        sheet.Cell(irow, 17).SetValue($"补贴月数不足{sptSpans}[{total}<{ptys}]");
                     else
-                        grSpans.Add(sspan);
+                    {
+                        sheet.Cell(irow, 16).SetValue(grSpans.JoinToString("|"));
+                        sheet.Cell(irow, 17).SetValue(sptSpans);   
+                    }
                 }
-                var sptSpans = ptSpans.JoinToString("|");
-                if (total < ptys)
-                    sheet.Cell(irow, 17).SetValue($"补贴月数不足{sptSpans}[{total}<{ptys}]");
-                else
+                catch
                 {
-                    sheet.Cell(irow, 16).SetValue(grSpans.JoinToString("|"));
-                    sheet.Cell(irow, 17).SetValue(sptSpans);   
+                    continue;
                 }
             }
 
