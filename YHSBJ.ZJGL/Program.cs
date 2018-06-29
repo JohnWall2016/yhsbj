@@ -175,8 +175,8 @@ namespace YHSBJ.ZJGL
             for (var irow = 4; irow <= sheet.LastRowNum; irow++)
             {
                 var memo = sheet.Cell(irow, 15).CellValue()?.Trim() ?? "";
-                if (memo == "重复")
-                    continue;
+                //if (memo == "重复")
+                //    continue;
                 
                 var jfys = (int)sheet.Cell(irow, 8).NumericCellValue;
                 var ptys = (int)sheet.Cell(irow, 9).NumericCellValue;
