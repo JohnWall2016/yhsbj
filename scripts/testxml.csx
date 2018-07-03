@@ -12,11 +12,9 @@ public class InEnvelope
 {
     [YAXAttributeForClass()]
     public string encodingStyle { get; set; } = "http://schemas.xmlsoap.org/soap/encoding/";
-
-    [YAXCustomSerializer(typeof(CustomInputSerializer))]
+    
     public Input Header { get; set; } = new Input("system");
 
-    [YAXCustomSerializer(typeof(CustomInputSerializer))]
     public Input Body { get; set; } = new Input("business");
 
     public override string ToString()
@@ -36,6 +34,7 @@ public class InEnvelope
     }
 }
 
+[YAXCustomSerializer(typeof(CustomInputSerializer))]
 public class Input
 {
     public static XNamespace Namespace => "http://www.molss.gov.cn/";
