@@ -13,13 +13,11 @@ public class InEnvelope
     [YAXAttributeForClass()]
     public string encodingStyle => "http://schemas.xmlsoap.org/soap/encoding/";
 
-    InParams _systemParams = new InParams();
-    [YAXElementFor("Header")]
-    public InParams system => _systemParams;
+    [YAXCustomSerializer(typeof(CustomInputSerializer))]
+    public Input Header { get; } = new Input("system");
 
-    InParams _businessParams = new InParams();
-    [YAXElementFor("Body")]
-    public InParams business => _businessParams;
+    [YAXCustomSerializer(typeof(CustomInputSerializer))]
+    public Input Body { get; } = new Input("business");
 
     public override string ToString()
     {
@@ -30,68 +28,91 @@ public class InEnvelope
         return "<?xml version=\"1.0\" encoding=\"GBK\"?>" +
             doc.ToString(SaveOptions.DisableFormatting).Replace(" />", "/>");
     }
-}
 
-[YAXCustomSerializer(typeof(CustomInParamsSerializer))]
-public class InParams : Dictionary<string, object>
-{
-    public IEnumerable<XElement> GetParamElements()
+    public static InEnvelope Load(string xml)
     {
-        foreach (var (k, v) in this)
-        {
-            var para = new XElement("para");
-            para.SetAttributeValue(k, v?.ToString() ?? "");
-            yield return para;
-        }
+       YAXSerializer serializer = new YAXSerializer(typeof(InEnvelope));
+       return (InEnvelope)serializer.Deserialize(xml);
     }
 }
 
-public class CustomInParamsSerializer : ICustomSerializer<InParams>
+public class Input
 {
-    public void SerializeToAttribute(InParams objectToSerialize, XAttribute attrToFill)
+    public Input(string name)
     {
-        throw new NotImplementedException();
+        Name = name;
+        Params = new Dictionary<string, object>();
     }
+    
+    public string Name { get; }
+    public Dictionary<string, object> Params { get; }
 
-    public void SerializeToElement(InParams paras, XElement elemToFill)
+    public XElement ToXElement()
     {
         XNamespace inNS = "http://www.molss.gov.cn/";
-        elemToFill.SetAttributeValue(XNamespace.Xmlns + "in", inNS);
-        elemToFill.Name = inNS + elemToFill.Name.LocalName;
+        var elem = new XElement(inNS + Name);
+        elem.SetAttributeValue(XNamespace.Xmlns + "in", inNS);
 
-        if (paras.Count == 0)
-            elemToFill.Value = "";
+        if (Params.Count == 0)
+            elem.Value = "";
         else
         {
-            foreach (XElement param in paras.GetParamElements())
-                elemToFill.Add(param);
+            foreach (var (k, v) in Params)
+            {
+                var para = new XElement("para");
+                para.SetAttributeValue(k, v?.ToString() ?? "");
+                elem.Add(para);
+            }
         }
+        return elem;
     }
+}
 
-    public string SerializeToValue(InParams objectToSerialize)
+public class CustomInputSerializer : ICustomSerializer<Input>
+{
+    public void SerializeToAttribute(Input objectToSerialize, XAttribute attrToFill)
     {
         throw new NotImplementedException();
     }
 
-    public InParams DeserializeFromAttribute(XAttribute attrib)
+    public void SerializeToElement(Input input, XElement elemToFill)
+    {
+        elemToFill.Add(input.ToXElement());
+    }
+
+    public string SerializeToValue(Input objectToSerialize)
     {
         throw new NotImplementedException();
     }
 
-    public InParams DeserializeFromElement(XElement element)
+    public Input DeserializeFromAttribute(XAttribute attrib)
     {
         throw new NotImplementedException();
     }
 
-    public InParams DeserializeFromValue(string value)
+    public Input DeserializeFromElement(XElement element)
+    {
+        throw new NotImplementedException();
+    }
+
+    public Input DeserializeFromValue(string value)
     {
         throw new NotImplementedException();
     }
 }
 
 var env = new InEnvelope();
-env.system.Add("usr", "hqm");
-env.system.Add("pwd", "YLZ_A2A5F63315129CB2998A0E0FCE31BA51");
-env.system.Add("funid", "F00.00.00.00|192.168.1.110|PC-20170427DGON|00-05-0F-08-1A-34");
+env.Header.Params.Add("usr", "hqm");
+env.Header.Params.Add("pwd", "YLZ_A2A5F63315129CB2998A0E0FCE31BA51");
+env.Header.Params.Add("funid", "F00.00.00.00|192.168.1.110|PC-20170427DGON|00-05-0F-08-1A-34");
 
-Console.WriteLine(env);
+string xml = env.ToString();
+Console.WriteLine(xml);
+
+env = InEnvelope.Load(xml);
+Console.WriteLine(env.encodingStyle);
+foreach (var (k, v) in env.Header.Params)
+{
+    Console.WriteLine("{0}:{1}", k, v);
+}
+
