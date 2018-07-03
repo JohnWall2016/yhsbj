@@ -11,13 +11,13 @@ using YAXLib;
 public class InEnvelope
 {
     [YAXAttributeForClass()]
-    public string encodingStyle => "http://schemas.xmlsoap.org/soap/encoding/";
+    public string encodingStyle { get; set; } = "http://schemas.xmlsoap.org/soap/encoding/";
 
     [YAXCustomSerializer(typeof(CustomInputSerializer))]
-    public Input Header { get; } = new Input("system");
+    public Input Header { get; set; } = new Input("system");
 
     [YAXCustomSerializer(typeof(CustomInputSerializer))]
-    public Input Body { get; } = new Input("business");
+    public Input Body { get; set; } = new Input("business");
 
     public override string ToString()
     {
@@ -38,20 +38,21 @@ public class InEnvelope
 
 public class Input
 {
+    public static XNamespace Namespace => "http://www.molss.gov.cn/";
+    public static string NamespacePrefix => "in";
+
+    public string Name { get; } = "";
+    public Dictionary<string, object> Params { get; } = new Dictionary<string, object>();
+
     public Input(string name)
     {
         Name = name;
-        Params = new Dictionary<string, object>();
     }
     
-    public string Name { get; }
-    public Dictionary<string, object> Params { get; }
-
     public XElement ToXElement()
     {
-        XNamespace inNS = "http://www.molss.gov.cn/";
-        var elem = new XElement(inNS + Name);
-        elem.SetAttributeValue(XNamespace.Xmlns + "in", inNS);
+        var elem = new XElement(Namespace + Name);
+        elem.SetAttributeValue(XNamespace.Xmlns + NamespacePrefix, Namespace);
 
         if (Params.Count == 0)
             elem.Value = "";
@@ -65,6 +66,24 @@ public class Input
             }
         }
         return elem;
+    }
+
+    public static Input FromXElement(XElement element)
+    {
+        Input input = null;
+        var elem = element.Elements().First(e => e.Name.Namespace == Namespace);
+        if (elem != null)
+        {
+            input = new Input(elem.Name.LocalName);
+            foreach (var el in elem.Elements("para"))
+            {
+                foreach (var attr in el.Attributes())
+                {
+                    input.Params.Add(attr.Name.LocalName, attr.Value);
+                }
+            }
+        }
+        return input;
     }
 }
 
@@ -92,7 +111,7 @@ public class CustomInputSerializer : ICustomSerializer<Input>
 
     public Input DeserializeFromElement(XElement element)
     {
-        throw new NotImplementedException();
+        return Input.FromXElement(element);
     }
 
     public Input DeserializeFromValue(string value)
@@ -115,4 +134,3 @@ foreach (var (k, v) in env.Header.Params)
 {
     Console.WriteLine("{0}:{1}", k, v);
 }
-
