@@ -170,7 +170,7 @@ namespace YHSBJ.ZJGL
 
             for (var irow = 4; irow <= sheet.LastRowNum; irow++)
             {
-                var memo = sheet.Cell(irow, 15).CellValue()?.Trim() ?? "";
+                var memo = sheet.Cell(irow, 15)?.CellValue()?.Trim() ?? "";
                 if (!string.IsNullOrEmpty(nodeal) && Regex.IsMatch(memo, nodeal))
                     continue;
 
