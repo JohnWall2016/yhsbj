@@ -6,6 +6,83 @@ using System.Linq;
 using System.Xml.Linq;
 using YAXLib;
 
+public interface ICustomSerializable
+{
+    string ToXAttributeValue();
+    XElement ToXElement();
+    string ToValue();
+    void LoadXAttribute(XAttribute attrib);
+    void LoadXElement(XElement element);
+    void LoadValue(string value);
+}
+
+public class BaseCustomSerializable : ICustomSerializable
+{
+    public virtual string ToXAttributeValue()
+    {
+        throw new NotImplementedException();
+    }
+    public virtual XElement ToXElement()
+    {
+        throw new NotImplementedException();
+    }
+    public virtual string ToValue()
+    {
+        throw new NotImplementedException();
+    }
+    public virtual void LoadXAttribute(XAttribute attrib)
+    {
+        throw new NotImplementedException();
+    }
+    public virtual void LoadXElement(XElement element)
+    {
+        throw new NotImplementedException();
+    }
+    public virtual void LoadValue(string value)
+    {
+        throw new NotImplementedException();
+    }
+}
+
+public class CustomSerializer<T> : ICustomSerializer<T> where T : ICustomSerializable, new()
+{
+    public void SerializeToAttribute(T serializable, XAttribute attrToFill)
+    {
+        attrToFill.Value = serializable.ToXAttributeValue();
+    }
+
+    public void SerializeToElement(T serializable, XElement elemToFill)
+    {
+        elemToFill.Add(serializable.ToXElement());
+    }
+
+    public string SerializeToValue(T serializable)
+    {
+        return serializable.ToValue();
+    }
+
+    public T DeserializeFromAttribute(XAttribute attrib)
+    {
+        var serializable = new T();
+        serializable.LoadXAttribute(attrib);
+        return serializable;
+    }
+
+    public T DeserializeFromElement(XElement element)
+    {
+        var serializable = new T();
+        serializable.LoadXElement(element);
+        return serializable;
+    }
+
+    public T DeserializeFromValue(string value)
+    {
+        var serializable = new T();
+        serializable.LoadValue(value);
+        return serializable;
+    }
+}
+
 [YAXNamespace("soap", "http://schemas.xmlsoap.org/soap/envelope/")]
 public class Envelope<TCustom>
 {
@@ -34,7 +111,7 @@ public class Envelope<TCustom>
 }
 
 [YAXCustomSerializer(typeof(CustomSerializer<Input>))]
-public class Input : ISerializable
+public class Input : BaseCustomSerializable
 {
     public static XNamespace Namespace => "http://www.molss.gov.cn/";
     public static string NamespacePrefix => "in";
@@ -49,7 +126,7 @@ public class Input : ISerializable
 
     public Input() : this("") {}
     
-    public XElement ToXElement()
+    public override XElement ToXElement()
     {
         var elem = new XElement(Namespace + Name);
         elem.SetAttributeValue(XNamespace.Xmlns + NamespacePrefix, Namespace);
@@ -68,7 +145,7 @@ public class Input : ISerializable
         return elem;
     }
 
-    public void LoadXElement(XElement element)
+    public override void LoadXElement(XElement element)
     {
         var elem = element.Elements().First(e => e.Name.Namespace == Namespace);
         if (elem != null)
@@ -83,47 +160,6 @@ public class Input : ISerializable
             }
         }
         return;
-    }
-}
-
-public interface ISerializable
-{
-    XElement ToXElement();
-    void LoadXElement(XElement element);
-}
-
-public class CustomSerializer<T> : ICustomSerializer<T> where T : ISerializable, new()
-{
-    public void SerializeToAttribute(T serializable, XAttribute attrToFill)
-    {
-        throw new NotImplementedException();
-    }
-
-    public void SerializeToElement(T serializable, XElement elemToFill)
-    {
-        elemToFill.Add(serializable.ToXElement());
-    }
-
-    public string SerializeToValue(T serializable)
-    {
-        throw new NotImplementedException();
-    }
-
-    public T DeserializeFromAttribute(XAttribute attrib)
-    {
-        throw new NotImplementedException();
-    }
-
-    public T DeserializeFromElement(XElement element)
-    {
-        var serializable = new T();
-        serializable.LoadXElement(element);
-        return serializable;
-    }
-
-    public T DeserializeFromValue(string value)
-    {
-        throw new NotImplementedException();
     }
 }
 
