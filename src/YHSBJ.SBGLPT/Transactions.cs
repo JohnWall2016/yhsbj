@@ -3,40 +3,6 @@ using System.Collections.Generic;
 
 namespace YHSBJ.SBGLPT
 {
-    public class SessionAction
-    {
-        public SessionAction(Session session)
-        {
-            S = session;
-        }
-
-        public Session S { get; }
-    }
-
-    public class MetaDict : Dictionary<string, string>
-    {
-        public MetaDict() {}
-        
-        public MetaDict(string[] keys, string []values)
-        {
-            int minLen = keys.Length <= values.Length ? keys.Length
-                : values.Length;
-            for (var i = 0; i < minLen; i++)
-                this.Add(keys[i], values[i]);
-        }
-        
-        public string GetMetaData(string key)
-        {
-            if (TryGetValue(key, out var meta))
-                return meta;
-            return "";
-        }
-    }
-
-    public class ResultDict : Dictionary<string, string>
-    {
-    }
-    
     /// <summary>
     ///   省内参保人员查询
     /// </summary>
@@ -90,11 +56,7 @@ namespace YHSBJ.SBGLPT
             });
             var output = S.GetOutput();
 
-            var results = new List<ResultDict>();
-            foreach (var row in output.Body.Resultset.Rows)
-                results.Add(row);
-            
-            return results;
+            return output.Body.Resultset.Rows;
         }
     }
 }

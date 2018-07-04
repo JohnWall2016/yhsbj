@@ -171,6 +171,8 @@ namespace YHSBJ.SBGLPT
         }
     }
 
+    public class ResultDict : Dictionary<string, string> {}
+
     [YAXCustomSerializer(typeof(CustomSerializer<Output>))]
     public class Output : BaseCustomSerializable
     {
@@ -178,7 +180,7 @@ namespace YHSBJ.SBGLPT
         public static string NamespacePrefix => "out";
 
         public string Name { get; private set; }
-        public List<ParamsDict> Results { get; } = new List<ParamsDict>();
+        public List<ResultDict> Results { get; } = new List<ResultDict>();
         public ResultSet Resultset { get; } = new ResultSet();
 
         public class ResultSet
@@ -209,12 +211,11 @@ namespace YHSBJ.SBGLPT
                 this.Name = "";
             }
 
-            void populate<T>(List<T> list, XElement xelem, string selectName)
-                where T : Dictionary<string, string>, new()
+            void populate(List<ResultDict> list, XElement xelem, string selectName)
             {
                 foreach (var el in xelem.Elements(selectName))
                 {
-                    var dict = new T();
+                    var dict = new ResultDict();
                     foreach (var attr in el.Attributes())
                         dict.Add(attr.Name.LocalName, attr.Value);
                     list.Add(dict);
@@ -231,5 +232,35 @@ namespace YHSBJ.SBGLPT
                 populate(this.Resultset.Rows, rset, "row");
             }
         }
+    }
+
+    public class MetaDict : Dictionary<string, string>
+    {
+        public MetaDict() {}
+        
+        public MetaDict(string[] keys, string []values)
+        {
+            int minLen = keys.Length <= values.Length ? keys.Length
+                : values.Length;
+            for (var i = 0; i < minLen; i++)
+                this.Add(keys[i], values[i]);
+        }
+        
+        public string GetMetaData(string key)
+        {
+            if (TryGetValue(key, out var meta))
+                return meta;
+            return "";
+        }
+    }
+
+    public class SessionAction
+    {
+        public SessionAction(Session session)
+        {
+            S = session;
+        }
+
+        public Session S { get; }
     }
 }
