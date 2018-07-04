@@ -16,6 +16,7 @@ namespace YHSBJ.SBGLPT
     public class MetaDict : Dictionary<string, string>
     {
         public MetaDict() {}
+        
         public MetaDict(string[] keys, string []values)
         {
             int minLen = keys.Length <= values.Length ? keys.Length
@@ -23,16 +24,17 @@ namespace YHSBJ.SBGLPT
             for (var i = 0; i < minLen; i++)
                 this.Add(keys[i], values[i]);
         }
+        
+        public string GetMetaData(string key)
+        {
+            if (TryGetValue(key, out var meta))
+                return meta;
+            return "";
+        }
     }
 
     public class ResultDict : Dictionary<string, string>
     {
-        public string GetMetaData(string key, MetaDict dict)
-        {
-            if (dict.TryGetValue(key, out var meta))
-                return meta;
-            return "";
-        }
     }
     
     /// <summary>
