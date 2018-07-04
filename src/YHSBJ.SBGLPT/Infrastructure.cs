@@ -246,7 +246,7 @@ namespace YHSBJ.SBGLPT
                 this.Add(keys[i], values[i]);
         }
         
-        public string GetMetaData(string key)
+        public string Get(string key)
         {
             if (TryGetValue(key, out var meta))
                 return meta;

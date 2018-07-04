@@ -16,7 +16,7 @@ Session.Using(session =>
     foreach (var dict in list)
     {
         foreach (var (k, v) in dict)
-            Console.Write("{0}:{2}:{1}|", k, v, cx.MetaData.GetMetaData(k));
+            Console.Write("{0}:{2}:{1}|", k, v, cx.MetaData.Get(k));
         Console.WriteLine();
     }
 });
