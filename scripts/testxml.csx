@@ -7,18 +7,18 @@ using System.Xml.Linq;
 using YAXLib;
 
 [YAXNamespace("soap", "http://schemas.xmlsoap.org/soap/envelope/")]
-public class Envelope<TInOut>
+public class Envelope<TCustom>
 {
     [YAXAttributeForClass()]
     public string encodingStyle { get; set; } = "http://schemas.xmlsoap.org/soap/encoding/";
     
-    public TInOut Header { get; set; }
+    public TCustom Header { get; set; }
 
-    public TInOut Body { get; set; }
+    public TCustom Body { get; set; }
 
     public override string ToString()
     {
-        YAXSerializer serializer = new YAXSerializer(typeof(Envelope<TInOut>));
+        YAXSerializer serializer = new YAXSerializer(typeof(Envelope<TCustom>));
         var doc = serializer.SerializeToXDocument(this);
         doc.Root.ReplaceAttributes(doc.Root.Attributes()
                                    .OrderByDescending(attr => attr.Name.Namespace.NamespaceName));
@@ -26,10 +26,10 @@ public class Envelope<TInOut>
             doc.ToString(SaveOptions.DisableFormatting).Replace(" />", "/>");
     }
 
-    public static Envelope<TInOut> Load(string xml)
+    public static Envelope<TCustom> Load(string xml)
     {
-       YAXSerializer serializer = new YAXSerializer(typeof(Envelope<TInOut>));
-       return (Envelope<TInOut>)serializer.Deserialize(xml);
+       YAXSerializer serializer = new YAXSerializer(typeof(Envelope<TCustom>));
+       return (Envelope<TCustom>)serializer.Deserialize(xml);
     }
 }
 
