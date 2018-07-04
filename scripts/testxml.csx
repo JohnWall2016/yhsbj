@@ -9,9 +9,9 @@ var env = new Envelope<Input>
     Header = new Input("system"),
     Body  = new Input("business")
 };
-env.Header.Params.Add("usr", "hqm");
-env.Header.Params.Add("pwd", "YLZ_A2A5F63315129CB2998A0E0FCE31BA51");
-env.Header.Params.Add("funid", "F00.00.00.00|192.168.1.110|PC-20170427DGON|00-05-0F-08-1A-34");
+env.Header.Params.Add("usr", "XXXXX");
+env.Header.Params.Add("pwd", "XXXXXXXXXXXXXXXXXX");
+env.Header.Params.Add("funid", "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX");
 
 string xml = env.ToString();
 Console.WriteLine(xml);

@@ -7,16 +7,6 @@ using YHSBJ.SBGLPT;
 
 Session.Using(session =>
 {
-    /*session.SendInput(inEnv =>
-    {
-        inEnv.Header.Params.Add("funid", "F00.01.03");
-        inEnv.Body.Params.Add("startrow", "1");
-        inEnv.Body.Params.Add("row_count", "-1");
-        inEnv.Body.Params.Add("pagesize", "500");
-        inEnv.Body.Params.Add("clientsql", "( aac002 = &apos;430302195806251012&apos;)");
-        inEnv.Body.Params.Add("functionid", "F27.06");
-    });
-    session.GetOutput();*/
     var cx = new Sncbrycx(session);
     foreach (var (k, v) in cx.MetaData)
         Console.Write("{0}:{1}|", k, v);
