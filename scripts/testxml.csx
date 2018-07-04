@@ -7,19 +7,18 @@ using System.Xml.Linq;
 using YAXLib;
 
 [YAXNamespace("soap", "http://schemas.xmlsoap.org/soap/envelope/")]
-[YAXSerializeAs("Envelope")]
-public class InEnvelope
+public class Envelope<TInOut>
 {
     [YAXAttributeForClass()]
     public string encodingStyle { get; set; } = "http://schemas.xmlsoap.org/soap/encoding/";
     
-    public Input Header { get; set; } = new Input("system");
+    public TInOut Header { get; set; }
 
-    public Input Body { get; set; } = new Input("business");
+    public TInOut Body { get; set; }
 
     public override string ToString()
     {
-        YAXSerializer serializer = new YAXSerializer(typeof(InEnvelope));
+        YAXSerializer serializer = new YAXSerializer(typeof(Envelope<TInOut>));
         var doc = serializer.SerializeToXDocument(this);
         doc.Root.ReplaceAttributes(doc.Root.Attributes()
                                    .OrderByDescending(attr => attr.Name.Namespace.NamespaceName));
@@ -27,26 +26,28 @@ public class InEnvelope
             doc.ToString(SaveOptions.DisableFormatting).Replace(" />", "/>");
     }
 
-    public static InEnvelope Load(string xml)
+    public static Envelope<TInOut> Load(string xml)
     {
-       YAXSerializer serializer = new YAXSerializer(typeof(InEnvelope));
-       return (InEnvelope)serializer.Deserialize(xml);
+       YAXSerializer serializer = new YAXSerializer(typeof(Envelope<TInOut>));
+       return (Envelope<TInOut>)serializer.Deserialize(xml);
     }
 }
 
-[YAXCustomSerializer(typeof(CustomInputSerializer))]
-public class Input
+[YAXCustomSerializer(typeof(CustomSerializer<Input>))]
+public class Input : ISerializable
 {
     public static XNamespace Namespace => "http://www.molss.gov.cn/";
     public static string NamespacePrefix => "in";
 
-    public string Name { get; } = "";
+    public string Name { get; private set; }
     public Dictionary<string, object> Params { get; } = new Dictionary<string, object>();
 
     public Input(string name)
     {
         Name = name;
     }
+
+    public Input() : this("") {}
     
     public XElement ToXElement()
     {
@@ -67,59 +68,70 @@ public class Input
         return elem;
     }
 
-    public static Input FromXElement(XElement element)
+    public void LoadXElement(XElement element)
     {
-        Input input = null;
         var elem = element.Elements().First(e => e.Name.Namespace == Namespace);
         if (elem != null)
         {
-            input = new Input(elem.Name.LocalName);
+            this.Name = elem.Name.LocalName;
             foreach (var el in elem.Elements("para"))
             {
                 foreach (var attr in el.Attributes())
                 {
-                    input.Params.Add(attr.Name.LocalName, attr.Value);
+                    this.Params.Add(attr.Name.LocalName, attr.Value);
                 }
             }
         }
-        return input;
+        return;
     }
 }
 
-public class CustomInputSerializer : ICustomSerializer<Input>
+public interface ISerializable
 {
-    public void SerializeToAttribute(Input objectToSerialize, XAttribute attrToFill)
+    XElement ToXElement();
+    void LoadXElement(XElement element);
+}
+
+public class CustomSerializer<T> : ICustomSerializer<T> where T : ISerializable, new()
+{
+    public void SerializeToAttribute(T serializable, XAttribute attrToFill)
     {
         throw new NotImplementedException();
     }
 
-    public void SerializeToElement(Input input, XElement elemToFill)
+    public void SerializeToElement(T serializable, XElement elemToFill)
     {
-        elemToFill.Add(input.ToXElement());
+        elemToFill.Add(serializable.ToXElement());
     }
 
-    public string SerializeToValue(Input objectToSerialize)
-    {
-        throw new NotImplementedException();
-    }
-
-    public Input DeserializeFromAttribute(XAttribute attrib)
+    public string SerializeToValue(T serializable)
     {
         throw new NotImplementedException();
     }
 
-    public Input DeserializeFromElement(XElement element)
+    public T DeserializeFromAttribute(XAttribute attrib)
     {
-        return Input.FromXElement(element);
+        throw new NotImplementedException();
     }
 
-    public Input DeserializeFromValue(string value)
+    public T DeserializeFromElement(XElement element)
+    {
+        var serializable = new T();
+        serializable.LoadXElement(element);
+        return serializable;
+    }
+
+    public T DeserializeFromValue(string value)
     {
         throw new NotImplementedException();
     }
 }
 
-var env = new InEnvelope();
+var env = new Envelope<Input>
+{
+    Header = new Input("system"),
+    Body  = new Input("business")
+};
 env.Header.Params.Add("usr", "hqm");
 env.Header.Params.Add("pwd", "YLZ_A2A5F63315129CB2998A0E0FCE31BA51");
 env.Header.Params.Add("funid", "F00.00.00.00|192.168.1.110|PC-20170427DGON|00-05-0F-08-1A-34");
@@ -127,7 +139,7 @@ env.Header.Params.Add("funid", "F00.00.00.00|192.168.1.110|PC-20170427DGON|00-05
 string xml = env.ToString();
 Console.WriteLine(xml);
 
-env = InEnvelope.Load(xml);
+env = Envelope<Input>.Load(xml);
 Console.WriteLine(env.encodingStyle);
 foreach (var (k, v) in env.Header.Params)
 {
