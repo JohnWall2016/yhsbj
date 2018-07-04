@@ -1,227 +1,98 @@
 ﻿using System;
-using System.Linq;
-using System.Xml.Linq;
 using System.Collections.Generic;
-using YAXLib;
 
 namespace YHSBJ.SBGLPT
 {
-    public interface ICustomSerializable
+    public class SessionAction
     {
-        void ToXAttribute(XAttribute attrToFill);
-        void ToXElement(XElement elemToFill);
-        string ToValue();
-        void LoadXAttribute(XAttribute attrib);
-        void LoadXElement(XElement element);
-        void LoadValue(string value);
+        public SessionAction(Session session)
+        {
+            S = session;
+        }
+
+        public Session S { get; }
     }
 
-    public class BaseCustomSerializable : ICustomSerializable
+    public class MetaDict : Dictionary<string, string>
     {
-        public virtual void ToXAttribute(XAttribute attrToFill)
+        public MetaDict() {}
+        public MetaDict(string[] keys, string []values)
         {
-            throw new NotImplementedException();
-        }
-        public virtual void ToXElement(XElement elemToFill)
-        {
-            throw new NotImplementedException();
-        }
-        public virtual string ToValue()
-        {
-            throw new NotImplementedException();
-        }
-        public virtual void LoadXAttribute(XAttribute attrib)
-        {
-            throw new NotImplementedException();
-        }
-        public virtual void LoadXElement(XElement element)
-        {
-            throw new NotImplementedException();
-        }
-        public virtual void LoadValue(string value)
-        {
-            throw new NotImplementedException();
+            int minLen = keys.Length <= values.Length ? keys.Length
+                : values.Length;
+            for (var i = 0; i < minLen; i++)
+                this.Add(keys[i], values[i]);
         }
     }
 
-    public class CustomSerializer<T> : ICustomSerializer<T> where T : ICustomSerializable, new()
+    public class ResultDict : Dictionary<string, string>
     {
-        public void SerializeToAttribute(T serializable, XAttribute attrToFill)
+        public string GetMetaData(string key, MetaDict dict)
         {
-            serializable.ToXAttribute(attrToFill);
-        }
-
-        public void SerializeToElement(T serializable, XElement elemToFill)
-        {
-            serializable.ToXElement(elemToFill);
-        }
-
-        public string SerializeToValue(T serializable)
-        {
-            return serializable.ToValue();
-        }
-
-        public T DeserializeFromAttribute(XAttribute attrib)
-        {
-            var serializable = new T();
-            serializable.LoadXAttribute(attrib);
-            return serializable;
-        }
-
-        public T DeserializeFromElement(XElement element)
-        {
-            var serializable = new T();
-            serializable.LoadXElement(element);
-            return serializable;
-        }
-
-        public T DeserializeFromValue(string value)
-        {
-            var serializable = new T();
-            serializable.LoadValue(value);
-            return serializable;
+            if (dict.TryGetValue(key, out var meta))
+                return meta;
+            return "";
         }
     }
-
-    [YAXSerializeAs("Envelope")]
-    [YAXNamespace("soap", "http://schemas.xmlsoap.org/soap/envelope/")]
-    public class Envelope<TCustom>
-    {
-        [YAXAttributeForClass()]
-        public string encodingStyle { get; set; } = "http://schemas.xmlsoap.org/soap/encoding/";
     
-        public TCustom Header { get; set; }
-
-        public TCustom Body { get; set; }
-
-        public override string ToString()
-        {
-            YAXSerializer serializer = new YAXSerializer(typeof(Envelope<TCustom>));
-            var doc = serializer.SerializeToXDocument(this);
-            doc.Root.ReplaceAttributes(doc.Root.Attributes()
-                                       .OrderByDescending(attr => attr.Name.Namespace.NamespaceName));
-            return "<?xml version=\"1.0\" encoding=\"GBK\"?>" +
-                doc.ToString(SaveOptions.DisableFormatting).Replace(" />", "/>");
-        }
-
-        public static Envelope<TCustom> Load(string xml)
-        {
-            YAXSerializer serializer = new YAXSerializer(typeof(Envelope<TCustom>));
-            return (Envelope<TCustom>)serializer.Deserialize(xml);
-        }
-    }
-
-    [YAXCustomSerializer(typeof(CustomSerializer<Input>))]
-    public class Input : BaseCustomSerializable
+    /// <summary>
+    ///   省内参保人员查询
+    /// </summary>
+    public class Sncbrycx : SessionAction
     {
-        public static XNamespace Namespace => "http://www.molss.gov.cn/";
-        public static string NamespacePrefix => "in";
+        public Sncbrycx(Session session) : base(session) {}
 
-        public string Name { get; private set; }
-        public Dictionary<string, object> Params { get; } = new Dictionary<string, object>();
-
-        public Input(string name)
+        MetaDict _metaData;
+        public MetaDict MetaData
         {
-            Name = name;
-        }
-
-        public Input() : this("") {}
-    
-        public override void ToXElement(XElement elemToFill)
-        {
-            var elem = new XElement(Namespace + Name);
-            elem.SetAttributeValue(XNamespace.Xmlns + NamespacePrefix, Namespace);
-
-            if (Params.Count == 0)
-                elem.Value = "";
-            else
+            get
             {
-                foreach (var kv in Params)
+                if (_metaData == null)
                 {
-                    var para = new XElement("para");
-                    para.SetAttributeValue(kv.Key, kv.Value?.ToString() ?? "");
-                    elem.Add(para);
-                }
-            }
-            elemToFill.Add(elem);
-        }
-
-        public override void LoadXElement(XElement element)
-        {
-            var elems = element.Elements().Where(e => e.Name.Namespace == Namespace);
-            if (elems.Any())
-            {
-                var elem = elems.ElementAt(0);
-                this.Name = elem.Name.LocalName;
-                foreach (var el in elem.Elements("para"))
-                {
-                    foreach (var attr in el.Attributes())
+                    S.SendInput(inEnv =>
                     {
-                        this.Params.Add(attr.Name.LocalName, attr.Value);
+                        inEnv.Header.Add("funid", "F00.01.04");
+                        inEnv.Body.Add("functionid", "F27.06");
+                    });
+                    var output = S.GetOutput();
+
+                    var rset = output.Body.Resultset;
+                    if (rset.Rows.Count > 0)
+                    {
+                        var row = rset.Rows[0];
+                        if (row.ContainsKey("resultfielden") &&
+                            row.ContainsKey("resultfieldcn"))
+                        {
+                            var en = row["resultfielden"].Split(',');
+                            var cn = row["resultfieldcn"].Split(',');
+                            _metaData = new MetaDict(en, cn);
+                            return _metaData;
+                        }
                     }
+                    _metaData = new MetaDict();
                 }
+                return _metaData;
             }
         }
-    }
 
-    [YAXCustomSerializer(typeof(CustomSerializer<Output>))]
-    public class Output : BaseCustomSerializable
-    {
-        public static XNamespace Namespace => "http://www.molss.gov.cn/";
-        public static string NamespacePrefix => "out";
-
-        public string Name { get; private set; }
-        public List<Dictionary<string, object>> Results { get; set; } = new List<Dictionary<string, object>>();
-        public ResultSet Resultset { get; set; } = new ResultSet();
-
-        public class ResultSet
+        public List<ResultDict> Search(string id)
         {
-            public string Name { get; set; }
-            public List<Dictionary<string, object>> Rows = new List<Dictionary<string, object>>();
-        }
-
-        public Output(string name)
-        {
-            Name = name;
-        }
-
-        public Output() : this("") {}
-    
-        public override void LoadXElement(XElement element)
-        {
-            XElement elem = null;
-            var elems = element.Elements().Where(e =>e.Name.Namespace == Namespace);
-            if (elems.Any())
+            S.SendInput(inEnv =>
             {
-                elem = elems.ElementAt(0);
-                this.Name = elem.Name.LocalName;
-            }
-            else
-            {
-                elem = element;
-                this.Name = "";
-            }
+                inEnv.Header.Add("funid", "F00.01.03");
+                inEnv.Body.Add("startrow", "1");
+                inEnv.Body.Add("row_count", "-1");
+                inEnv.Body.Add("pagesize", "500");
+                inEnv.Body.Add("clientsql", $"( aac002 = &apos;{id}&apos;)");
+                inEnv.Body.Add("functionid", "F27.06");
+            });
+            var output = S.GetOutput();
 
-            void populate(List<Dictionary<string, object>> list, XElement xelem, string selectName)
-            {
-                foreach (var el in xelem.Elements(selectName))
-                {
-                    var dict = new Dictionary<string, object>();
-                    foreach (var attr in el.Attributes())
-                        dict.Add(attr.Name.LocalName, attr.Value);
-                    list.Add(dict);
-                }
-            }
-
-            populate(this.Results, elem, "result");
-
-            elems = elem.Elements("resultset");
-            if (elems.Any())
-            {
-                var rset = elems.ElementAt(0);
-                this.Resultset.Name = rset.Attribute("name")?.Value;
-                populate(this.Resultset.Rows, rset, "row");
-            }
+            var results = new List<ResultDict>();
+            foreach (var row in output.Body.Resultset.Rows)
+                results.Add(row);
+            
+            return results;
         }
     }
 }
