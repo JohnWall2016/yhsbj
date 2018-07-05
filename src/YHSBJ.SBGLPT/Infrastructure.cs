@@ -171,7 +171,9 @@ namespace YHSBJ.SBGLPT
         }
     }
 
-    public class ResultDict : Dictionary<string, string> {}
+    public class ResultDict : Dictionary<string, string>
+    {
+    }
 
     [YAXCustomSerializer(typeof(CustomSerializer<Output>))]
     public class Output : BaseCustomSerializable
@@ -243,7 +245,46 @@ namespace YHSBJ.SBGLPT
             int minLen = keys.Length <= values.Length ? keys.Length
                 : values.Length;
             for (var i = 0; i < minLen; i++)
-                this.Add(keys[i], values[i]);
+                this.Add(keys[i], values[i]?.Trim() ?? "");
+        }
+
+        public static MetaDict Fetch(Session session, string funid, string functionid)
+        {
+            session.SendInput(inEnv =>
+            {
+                inEnv.Header.Add("funid", funid);
+                inEnv.Body.Add("functionid", functionid);
+            });
+            var output = session.GetOutput();
+
+            string en = null;
+            string cn = null;
+            
+            foreach (var rs in output.Body.Results)
+            {
+                if (rs.ContainsKey("resultfielden"))
+                    en = rs["resultfielden"];
+                if (rs.ContainsKey("resultfieldcn"))
+                    cn = rs["resultfieldcn"];
+            }
+
+            if (en == null && cn == null)
+            {
+                var rset = output.Body.Resultset;
+                if (rset.Rows.Count > 0)
+                {
+                    var row = rset.Rows[0];
+                    if (row.ContainsKey("resultfielden") &&
+                        row.ContainsKey("resultfieldcn"))
+                    {
+                        en = row["resultfielden"];
+                        cn = row["resultfieldcn"];
+                    }
+                }
+            }
+            if (en != null && cn != null)
+                return new MetaDict(en.Split(','), cn.Split(','));
+            return null;
         }
         
         public string Get(string key)
@@ -251,6 +292,14 @@ namespace YHSBJ.SBGLPT
             if (TryGetValue(key, out var meta))
                 return meta;
             return "";
+        }
+
+        public string GetOrWithPrefix(string key, string prefix = "v.")
+        {
+            var str = Get(prefix + key);
+            if (str != "")
+                return str;
+            return Get(key);
         }
     }
 
@@ -262,5 +311,32 @@ namespace YHSBJ.SBGLPT
         }
 
         public Session S { get; }
+    }
+
+    public class SessionActionWithMetaData : SessionAction
+    {
+        public SessionActionWithMetaData(Session session, string funid, string functionid) : base(session)
+        {
+            _funid = funid;
+            _functionid = functionid;
+        }
+
+        string _funid;
+        string _functionid;
+        
+        MetaDict _metaData;
+        public MetaDict MetaData
+        {
+            get
+            {
+                if (_metaData == null)
+                {
+                    _metaData = MetaDict.Fetch(S, _funid, _functionid);
+                    if (_metaData == null)
+                        _metaData = new MetaDict();
+                }
+                return _metaData;
+            }
+        }
     }
 }
