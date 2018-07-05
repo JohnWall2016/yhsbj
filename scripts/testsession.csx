@@ -5,7 +5,6 @@
 #r "../src/YHSBJ.SBGLPT/bin/Debug/netstandard2.0/YHSBJ.SBGLPT.dll"
 #r "../../yhcjb/src/YHCJB.Util/bin/Debug/netstandard2.0/NPOI.dll"
 #r "../../yhcjb/src/YHCJB.Util/bin/Debug/netstandard2.0/NPOI.OOXML.dll"
-//#r "../../yhcjb/src/YHCJB.Util/bin/Debug/netstandard2.0/NPOI.OpenXml4Net.dll"
 #r "../../yhcjb/src/YHCJB.Util/bin/Debug/netstandard2.0/YHCJB.Util.dll"
 
 using YHSBJ.SBGLPT;
@@ -141,13 +140,13 @@ void updateSbzt(string xls = @"D:\数据核查\雨湖区2012到2016年历年暂�
             if (list.Count > 1)
             {
                 var bz = "有多条参保记录";
-                memo = memo != "" ? bz + "|" + memo : memo;
+                memo = memo != "" ? bz + "|" + memo : bz;
             }
             var msg = $"{i}:{idcard}";
             if (list.Count == 0)
                 msg += "|未参保";
             else
-                msg += $"|{name}|{sbjgmc}|{cbzt}|{shbxzt}|{dwmc}|{ltxrq}|{dykssj}|{dyffzt}";
+                msg += $"|{name}|{sbjgmc}|{cbzt}|{shbxzt}|{dwmc}|{ltxrq}|{dykssj}|{dyffzt}|{memo}";
             Console.WriteLine(msg);
 
             sheet.Row(i).CreateCell(11).SetValue(name);
