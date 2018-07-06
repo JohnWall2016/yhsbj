@@ -10,7 +10,7 @@ namespace YHSBJ.SBGLPT
     {
         public Sncbrycx(Session session) : base(session, "F00.01.04", "F27.06") {}
 
-        public List<ResultDict> Search(string id)
+        public List<ResultDict> Search(string pid)
         {
             S.SendInput(inEnv =>
             {
@@ -18,7 +18,7 @@ namespace YHSBJ.SBGLPT
                 inEnv.Body.Add("startrow", "1");
                 inEnv.Body.Add("row_count", "-1");
                 inEnv.Body.Add("pagesize", "500");
-                inEnv.Body.Add("clientsql", $"( aac002 = &apos;{id}&apos;)");
+                inEnv.Body.Add("clientsql", $"( aac002 = &apos;{pid}&apos;)");
                 inEnv.Body.Add("functionid", "F27.06");
             });
             var output = S.GetOutput();
@@ -27,6 +27,9 @@ namespace YHSBJ.SBGLPT
         }
     }
 
+    /// <summary>
+    ///   社保机构编码
+    /// </summary>
     public class Sbjgbm : SessionAction
     {
         public Sbjgbm(Session s) : base(s)
@@ -83,7 +86,7 @@ namespace YHSBJ.SBGLPT
     {
         public Ltxrycxtj(Session s) : base(s, "F00.01.01", "F27.03") {}
 
-        public List<ResultDict> Search(string id, string sbjgbm)
+        public List<ResultDict> Search(string pid, string sbjgbm)
         {
             S.SendInput(inEnv =>
             {
@@ -92,11 +95,55 @@ namespace YHSBJ.SBGLPT
                 inEnv.Body.Add("startrow", "1");
                 inEnv.Body.Add("row_count", "-1");
                 inEnv.Body.Add("pagesize", "1000");
-                inEnv.Body.Add("clientsql", $"( v.aac002 = &apos;{id}&apos;)");
+                inEnv.Body.Add("clientsql", $"( v.aac002 = &apos;{pid}&apos;)");
                 inEnv.Body.Add("functionid", "F27.03");
             });
             var output = S.GetOutput();
 
+            return output.Body.Resultset.Rows;
+        }
+    }
+
+    /// <summary>
+    ///   CS参保个人信息查询
+    /// </summary>
+    public partial class Cscbgrxxcx : SessionAction
+    {
+        public Cscbgrxxcx(Session s) : base(s)
+        {
+        }
+
+        public List<ResultDict> Search(string pid, string sbjgmc)
+        {
+            if (!IsInArea(sbjgmc))
+                return new List<ResultDict>();
+            //Console.WriteLine("cssearch");
+            S.SendInput(inEnv =>
+            {
+                inEnv.Header.Add("funid", "F00.01.03");
+                inEnv.Body.Add("startrow", "1");
+                inEnv.Body.Add("row_count", "-1");
+                inEnv.Body.Add("pagesize", "200");
+                inEnv.Body.Add("clientsql", $"( aac002 = &apos;{pid}&apos;)");
+                inEnv.Body.Add("functionid", "F27.11.02.01");
+            });
+            var output = S.GetOutput();
+            //Console.WriteLine(output.Body.Resultset.Rows.Count);
+            foreach (var row in output.Body.Resultset.Rows)
+            {
+                var id = row["aac001"];
+                S.SendInput(inEnv =>
+                {
+                    inEnv.Header.Add("funid", "F00.01.03");
+                    inEnv.Body.Add("startrow", "1");
+                    inEnv.Body.Add("row_count", "-1");
+                    inEnv.Body.Add("pagesize", "50");
+                    inEnv.Body.Add("clientsql", $"aac001=&apos;{id}&apos;");
+                    inEnv.Body.Add("functionid", "F27.11.02.06");
+                });
+                var subOutput = S.GetOutput();
+                row.SubItems = subOutput.Body.Resultset.Rows;
+            }
             return output.Body.Resultset.Rows;
         }
     }

@@ -173,6 +173,7 @@ namespace YHSBJ.SBGLPT
 
     public class ResultDict : Dictionary<string, string>
     {
+        public List<ResultDict> SubItems { get; set; }
     }
 
     [YAXCustomSerializer(typeof(CustomSerializer<Output>))]

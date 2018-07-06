@@ -69,8 +69,8 @@ void sbqkcx(string idcard)
     });
 }
 
-// aac031:参保状态:     3-终止缴费, 1-参保缴费, 2-暂停缴费
-// aac008:社会保险状态: 2-退休,     1-在职
+// aac031:参保状态:     1-参保缴费, 2-暂停缴费, 3-终止缴费
+// aac008:社会保险状态: 1-在职,     2-退休,     4-终止 
 // sac007:缴费人员类别: 102-个体缴费, 101-单位在业人员
 // aab300:社保机构名称
 // aac003:姓名
@@ -81,7 +81,7 @@ void sbqkcx(string idcard)
 // 3. 按地区编码 身份证号码 -> 信息
 // aic162:离退休日期       2011-12-01
 // aic160:待遇开始享受日期 201201
-// aae116:待遇发放状态     1-可发放[正常], 0-不可发放[暂停], 3-待遇终止[终止]
+// aae116:待遇发放状态     0-不可发放[暂停], 1-可发放[正常], 3-待遇终止[终止]
 // aab004:单位名称
 void updateSbzt(string xls = @"D:\数据核查\雨湖区2012到2016年历年暂停停人员名册表\雨湖区2012到2016年历年暂停停人员名册表（职保比对）.xlsx")
 {
@@ -92,8 +92,9 @@ void updateSbzt(string xls = @"D:\数据核查\雨湖区2012到2016年历年暂�
         var cx = new Sncbrycx(session);
         var sbbm = new Sbjgbm(session);
         var ltx = new Ltxrycxtj(session);
+        var cs = new Cscbgrxxcx(session);
         
-        for (var i = 151; i <= 500/*sheet.LastRowNum*/; i++)
+        for (var i = 2; i <= sheet.LastRowNum; i++)
         {
             var name = "";
             var id = "";
@@ -111,6 +112,10 @@ void updateSbzt(string xls = @"D:\数据核查\雨湖区2012到2016年历年暂�
 
             var idcard = sheet.Cell(i, 4).StringCellValue;
             var list = cx.Search(idcard);
+
+            var sbjg = sheet.Cell(i, 12)?.StringCellValue ?? "";
+            Console.WriteLine($"{i}:{sbjg}");
+            if (!Cscbgrxxcx.IsInArea(sbjg)) continue;
 
             if (list.Count > 0)
             {
@@ -133,8 +138,29 @@ void updateSbzt(string xls = @"D:\数据核查\雨湖区2012到2016年历年暂�
                         ltxrq = iltx["aic162"];
                         dykssj = iltx["aic160"];
                     }
-                    if (iltxs.Count > 1)
-                        memo = "有多条待遇记录";   
+                    if (iltxs.Count == 0)
+                    {
+                        var rset = cs.Search(id, sbjgmc);
+                        if (rset.Count > 0)
+                        {
+                            ltxrq = rset[0]["aic162"];
+                            if (rset[0].SubItems.Count > 0)
+                            {
+                                dwmc = rset[0].SubItems[0]["aab004"];
+                                dyffzt = rset[0].SubItems[0]["aae116"];
+                                dykssj = rset[0].SubItems[0]["aic160"];
+                            }
+                            if (rset[0].SubItems.Count > 1)
+                                memo = "CS有多条待遇记录";
+                        }
+                        if (rset.Count > 1)
+                        {
+                            var bz = "CS有多条参保记录";
+                            memo = memo != "" ? bz + "|" + memo : bz;
+                        }
+                    }
+                    else if (iltxs.Count > 1)
+                        memo = "有多条待遇记录";
                 }
             }
             if (list.Count > 1)
@@ -165,4 +191,33 @@ void updateSbzt(string xls = @"D:\数据核查\雨湖区2012到2016年历年暂�
     workbook.Close();
 }
 
+void searchCS(string pid)
+{
+    Session.Using(session =>
+    {
+        var cx = new Sncbrycx(session);
+        var cs = new Cscbgrxxcx(session);
+
+        var list = cx.Search(pid);
+        if (list.Count > 0)
+        {
+            var name = list[0]["aac003"];
+            var id = list[0]["aac002"];
+            var sbjgmc = list[0]["aab300"];
+            Console.WriteLine(list[0].ToDictString());
+            
+            var rset = cs.Search(id, sbjgmc);
+            foreach (var dict in rset)
+            {
+                Console.WriteLine(dict.ToDictString());
+                foreach (var d in dict.SubItems)
+                {
+                    Console.WriteLine(d.ToDictString());
+                }
+            }
+        }
+    });
+}
+
 updateSbzt();
+//searchCS("430311195203261517");
