@@ -110,12 +110,15 @@ void updateSbzt(string xls = @"D:\数据核查\雨湖区2012到2016年历年暂�
 
             var memo = "";
 
+            var sbzt = sheet.Cell(i, 14)?.StringCellValue;
+            if (sbzt != "4") continue;
+
             var idcard = sheet.Cell(i, 4).StringCellValue;
             var list = cx.Search(idcard);
 
             var sbjg = sheet.Cell(i, 12)?.StringCellValue ?? "";
             Console.WriteLine($"{i}:{sbjg}");
-            if (!Cscbgrxxcx.IsInArea(sbjg)) continue;
+            //if (!Cscbgrxxcx.IsInArea(sbjg)) continue;
 
             if (list.Count > 0)
             {
@@ -127,7 +130,9 @@ void updateSbzt(string xls = @"D:\数据核查\雨湖区2012到2016年历年暂�
                 sbjgmc = dict["aab300"];
                 sbjgbm = sbbm.GetBm(sbjgmc);
 
-                if (shbxzt == "2")
+                Console.WriteLine(shbxzt);
+
+                if (shbxzt == "4")
                 {
                     var iltxs = ltx.Search(id, sbjgbm);
                     if (iltxs.Count > 0)
